@@ -1,7 +1,7 @@
 /*
 This code reads the time a PPM signal is HIGH and outputs it to Serial
 */
-#import <Servo.h>
+#include <Servo.h>
 //TODO: download Timer1 library
 //TODO: download PCint lib
 
