@@ -138,3 +138,68 @@ void loop() {
   }
 }
 
+void calcThrottle(){
+  //calculate the length of the HIGH PPM wave
+  if(digitalRead(THROTTLE_IN_PORT) == HIGH){
+    throttleStart = micros();
+  }
+  else{
+    sharedThrottle = (uint32_t)(micros()-throttleStart);
+    sharedFlags |= THROTTLE_FLAG;
+  }
+}
+
+void calcRudder(){
+  //calculate the length of the HIGH PPM wave
+  if(digitalRead(RUDDER_IN_PORT) == HIGH){
+    rudderStart = micros();
+  }
+  else{
+    sharedRudder = (uint32_t)(micros()-rudderStart);
+    sharedFlags |= RUDDER_FLAG;
+  }
+}
+
+void calcElevator(){
+  //calculate the length of the HIGH PPM wave
+  if(digitalRead(ELEVATOR_IN_PORT) == HIGH){
+    elevatorStart = micros();
+  }
+  else{
+    sharedElevator = (uint32_t)(micros()-elevatorStart);
+    sharedFlags |= ELEVATOR_FLAG;
+  }
+}
+
+void calcAileron(){
+  //calculate the length of the HIGH PPM wave
+  if(digitalRead(AILERON_IN_PORT) == HIGH){
+    aileronStart = micros();
+  }
+  else{
+    sharedAileron = (uint32_t)(micros()-aileronStart);
+    sharedFlags |= AILERON_FLAG;
+  }
+}
+
+void calcAux1(){
+  //calculate the length of the HIGH PPM wave
+  if(digitalRead(AUX1_IN_PORT) == HIGH){
+    aux1Start = micros();
+  }
+  else{
+    sharedAux1 = (uint32_t)(micros()-aux1Start);
+    sharedFlags |= AUX1_FLAG;
+  }
+}
+
+void calcAux2(){
+  //calculate the length of the HIGH PPM wave
+  if(digitalRead(AUX2_IN_PORT) == HIGH){
+    aux2Start = micros();
+  }
+  else{
+    sharedAux2 = (uint32_t)(micros()-aux2Start);
+    sharedFlags |= AUX2_FLAG;
+  }
+}
