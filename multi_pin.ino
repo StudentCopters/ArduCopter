@@ -1,3 +1,5 @@
+
+
 /*
 This code reads the time multiple PPM signals are HIGH and outputs it to Serial
 */
@@ -5,23 +7,23 @@ This code reads the time multiple PPM signals are HIGH and outputs it to Serial
 //TODO: download Timer1 library
 //TODO: use Due for interrupts
 #include <Wire.h>
-
+#include <EnableInterrupt.h>
 
 #define SIGNAL_NEUTRAL 1400
 //#define THROTTLE_INT_PORT 0 //unneeded because of PChangeInt
 
-#define THROTTLE_IN_PORT 2
-#define RUDDER_IN_PORT 3
-#define ELEVATOR_IN_PORT 4
-#define AILERON_IN_PORT 5
-#define AUX1_IN_PORT 6
-#define AUX2_IN_PORT 7
+#define THROTTLE_IN_PORT 10
+#define RUDDER_IN_PORT 11
+#define ELEVATOR_IN_PORT 12
+#define AILERON_IN_PORT 13
+#define AUX1_IN_PORT 14
+#define AUX2_IN_PORT 15
 
-#define THROTTLE_OUT_PORT 8
-#define RUDDER_OUT_PORT 9
-#define ELEVATOR_OUT_PORT 10
-#define AILERON_OUT_PORT 11
-#define AUX1_OUT_PORT 12
+#define THROTTLE_OUT_PORT 2
+#define RUDDER_OUT_PORT 3
+#define ELEVATOR_OUT_PORT 4
+#define AILERON_OUT_PORT 5
+#define AUX1_OUT_PORT 6
 
 #define THROTTLE_FLAG 1
 #define RUDDER_FLAG 2
@@ -60,12 +62,12 @@ double aileronIGain = 1;
 
 void setup() {
   // put your setup code here, to run once:
-  attachInterrupt(THROTTLE_IN_PORT, calcThrottle, CHANGE);
-  attachInterrupt(RUDDER_IN_PORT, calcRudder, CHANGE);
-  attachInterrupt(ELEVATOR_IN_PORT, calcElevator, CHANGE);
-  attachInterrupt(AILERON_IN_PORT, calcAileron, CHANGE);
-  attachInterrupt(AUX1_IN_PORT, calcAux1, CHANGE);
-  attachInterrupt(AUX2_IN_PORT, calcAux2, CHANGE);
+  enableInterrupt(THROTTLE_IN_PORT, calcThrottle, CHANGE);
+  enableInterrupt(RUDDER_IN_PORT, calcRudder, CHANGE);
+  enableInterrupt(ELEVATOR_IN_PORT, calcElevator, CHANGE);
+  enableInterrupt(AILERON_IN_PORT, calcAileron, CHANGE);
+  enableInterrupt(AUX1_IN_PORT, calcAux1, CHANGE);
+  enableInterrupt(AUX2_IN_PORT, calcAux2, CHANGE);
 
   throttle.attach(THROTTLE_OUT_PORT);
   rudder.attach(RUDDER_OUT_PORT);
@@ -143,7 +145,7 @@ void loop() {
   }
 
   //PROCESSING
-  if (aux2In > SIGNAL_NEUTRAL) {//if processing...
+  if (aux2In < SIGNAL_NEUTRAL-200) {//if processing...
     getMPU6050();
     if (flags & THROTTLE_FLAG) {
       if (AcZ > AcZCal + 200 && MULTIPLIER * throttleIGain < 500) {//if FALLING
@@ -187,7 +189,7 @@ void loop() {
     aileronIGain = 1;
   }
   //WRITING
-  if (aux2In > SIGNAL_NEUTRAL) {//if processing...
+  if (aux2In < SIGNAL_NEUTRAL-200) {//if processing...
     if (flags & THROTTLE_FLAG) {
       if (throttle.readMicroseconds() != throttleProcessed) {
         throttle.writeMicroseconds(throttleProcessed);
