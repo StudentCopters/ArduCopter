@@ -1,7 +1,5 @@
-
-
 /*
-This code reads the time multiple PPM signals are HIGH and outputs it to Serial
+This code reads the time multiple PPM signals are HIGH and passes it through to input
 */
 #include <Servo.h>
 //TODO: download Timer1 library
@@ -367,3 +365,5 @@ void calibrateMPU6050() {
   GyYCal = (GyY + GyYCal) / 2;
   GyZCal = (GyZ + GyZCal) / 2;
 }
+
+
