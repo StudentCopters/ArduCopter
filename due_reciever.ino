@@ -219,146 +219,147 @@ void loop() {
 
   static uint8_t flags;
 
+  if (sharedFlags) {
+    noInterrupts();
+    flags = sharedFlags;
+
+    if (flags & THROTTLE_FLAG) {
+      throttleIn = sharedThrottle;
+      //throttleProcessed = sharedThrottle;
+    }
+
+    if (flags & RUDDER_FLAG) {
+      rudderIn = sharedRudder;
+      //rudderProcessed = sharedRudder;
+    }
+
+    if (flags & ELEVATOR_FLAG) {
+      elevatorIn = sharedElevator;
+      //elevatorProcessed = sharedElevator;
+    }
+
+    if (flags & AILERON_FLAG) {
+      aileronIn = sharedAileron;
+      //aileronProcessed = sharedAileron;
+    }
+
+    if (flags & AUX1_FLAG) {
+      aux1In = sharedAux1;
+      //aux1Processed = sharedAux1;
+    }
+
+    if (flags & AUX2_FLAG) {
+      aux2In = sharedAux2;
+      //aux2Processed = sharedAux2;
+    }
+
+    sharedFlags = 0;
+    interrupts();
+  }
+
+  //PROCESSING
+  if (aux2In < SIGNAL_NEUTRAL - 200) { //if processing...
+
+    if (flags & THROTTLE_FLAG) {
+      if (false) {
+
+      }
+    }
+
+    if (flags & RUDDER_FLAG) {
+      if (false) {
+
+      }
+    }
+
+    if (flags & ELEVATOR_FLAG) {
+      if (false) {
+
+      }
+    }
+
+    if (flags & AILERON_FLAG) {
+      if (false) {
+
+      }
+    }
+
+    if (flags & AUX1_FLAG) {
+      if (false) {
+
+      }
+    }
+  } else {
+    throttleIGain = 1;
+    rudderIGain = 1;
+    elevatorIGain = 1;
+    aileronIGain = 1;
+  }
+  //WRITING
+  if (aux2In < SIGNAL_NEUTRAL - 200) { //if processing...
+    if (flags & THROTTLE_FLAG) {
+      if (throttle.readMicroseconds() != throttleProcessed) {
+        throttle.writeMicroseconds(throttleProcessed);
+      }
+    }
+
+    if (flags & RUDDER_FLAG) {
+      if (rudder.readMicroseconds() != rudderProcessed) {
+        rudder.writeMicroseconds(rudderProcessed);
+      }
+    }
+
+    if (flags & ELEVATOR_FLAG) {
+      if (elevator.readMicroseconds() != elevatorProcessed) {
+        elevator.writeMicroseconds(elevatorProcessed);
+      }
+    }
+
+    if (flags & AILERON_FLAG) {
+      if (aileron.readMicroseconds() != aileronProcessed) {
+        aileron.writeMicroseconds(aileronProcessed);
+      }
+    }
+
+    if (flags & AUX1_FLAG) {
+      if (aux1.readMicroseconds() != aux1Processed) {
+        aux1.writeMicroseconds(aux1Processed);
+      }
+    }
+  } else {//pass values through
+    if (flags & THROTTLE_FLAG) {
+      if (throttle.readMicroseconds() != throttleIn) {
+        throttle.writeMicroseconds(throttleIn);
+      }
+    }
+
+    if (flags & RUDDER_FLAG) {
+      if (rudder.readMicroseconds() != rudderIn) {
+        rudder.writeMicroseconds(rudderIn);
+      }
+    }
+
+    if (flags & ELEVATOR_FLAG) {
+      if (elevator.readMicroseconds() != elevatorIn) {
+        elevator.writeMicroseconds(elevatorIn);
+      }
+    }
+
+    if (flags & AILERON_FLAG) {
+      if (aileron.readMicroseconds() != aileronIn) {
+        aileron.writeMicroseconds(aileronIn);
+      }
+    }
+
+    if (flags & AUX1_FLAG) {
+      if (aux1.readMicroseconds() != aux1In) {
+        aux1.writeMicroseconds(aux1In);
+      }
+    }
+  }
+
   // wait for MPU interrupt or extra packet(s) available
   while (!mpuInterrupt && fifoCount < packetSize) {
-    if (sharedFlags) {
-      noInterrupts();
-      flags = sharedFlags;
-
-      if (flags & THROTTLE_FLAG) {
-        throttleIn = sharedThrottle;
-        //throttleProcessed = sharedThrottle;
-      }
-
-      if (flags & RUDDER_FLAG) {
-        rudderIn = sharedRudder;
-        //rudderProcessed = sharedRudder;
-      }
-
-      if (flags & ELEVATOR_FLAG) {
-        elevatorIn = sharedElevator;
-        //elevatorProcessed = sharedElevator;
-      }
-
-      if (flags & AILERON_FLAG) {
-        aileronIn = sharedAileron;
-        //aileronProcessed = sharedAileron;
-      }
-
-      if (flags & AUX1_FLAG) {
-        aux1In = sharedAux1;
-        //aux1Processed = sharedAux1;
-      }
-
-      if (flags & AUX2_FLAG) {
-        aux2In = sharedAux2;
-        //aux2Processed = sharedAux2;
-      }
-
-      sharedFlags = 0;
-      interrupts();
-    }
-
-    //PROCESSING
-    if (aux2In < SIGNAL_NEUTRAL - 200) { //if processing...
-      
-      if (flags & THROTTLE_FLAG) {
-        if (false) {
-
-        }
-      }
-
-      if (flags & RUDDER_FLAG) {
-        if (false) {
-
-        }
-      }
-
-      if (flags & ELEVATOR_FLAG) {
-        if (false) {
-
-        }
-      }
-
-      if (flags & AILERON_FLAG) {
-        if (false) {
-
-        }
-      }
-
-      if (flags & AUX1_FLAG) {
-        if (false) {
-
-        }
-      }
-    } else {
-      throttleIGain = 1;
-      rudderIGain = 1;
-      elevatorIGain = 1;
-      aileronIGain = 1;
-    }
-    //WRITING
-    if (aux2In < SIGNAL_NEUTRAL - 200) { //if processing...
-      if (flags & THROTTLE_FLAG) {
-        if (throttle.readMicroseconds() != throttleProcessed) {
-          throttle.writeMicroseconds(throttleProcessed);
-        }
-      }
-
-      if (flags & RUDDER_FLAG) {
-        if (rudder.readMicroseconds() != rudderProcessed) {
-          rudder.writeMicroseconds(rudderProcessed);
-        }
-      }
-
-      if (flags & ELEVATOR_FLAG) {
-        if (elevator.readMicroseconds() != elevatorProcessed) {
-          elevator.writeMicroseconds(elevatorProcessed);
-        }
-      }
-
-      if (flags & AILERON_FLAG) {
-        if (aileron.readMicroseconds() != aileronProcessed) {
-          aileron.writeMicroseconds(aileronProcessed);
-        }
-      }
-
-      if (flags & AUX1_FLAG) {
-        if (aux1.readMicroseconds() != aux1Processed) {
-          aux1.writeMicroseconds(aux1Processed);
-        }
-      }
-    } else {//pass values through
-      if (flags & THROTTLE_FLAG) {
-        if (throttle.readMicroseconds() != throttleIn) {
-          throttle.writeMicroseconds(throttleIn);
-        }
-      }
-
-      if (flags & RUDDER_FLAG) {
-        if (rudder.readMicroseconds() != rudderIn) {
-          rudder.writeMicroseconds(rudderIn);
-        }
-      }
-
-      if (flags & ELEVATOR_FLAG) {
-        if (elevator.readMicroseconds() != elevatorIn) {
-          elevator.writeMicroseconds(elevatorIn);
-        }
-      }
-
-      if (flags & AILERON_FLAG) {
-        if (aileron.readMicroseconds() != aileronIn) {
-          aileron.writeMicroseconds(aileronIn);
-        }
-      }
-
-      if (flags & AUX1_FLAG) {
-        if (aux1.readMicroseconds() != aux1In) {
-          aux1.writeMicroseconds(aux1In);
-        }
-      }
-    }
   }
   // reset interrupt flag and get INT_STATUS byte
   mpuInterrupt = false;
