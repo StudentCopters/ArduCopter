@@ -289,6 +289,13 @@ void loop() {
       yawInput = map(rudderIn, 1096, 1900, -1 * MULTIPLIER, MULTIPLIER);
       yawTarget += yawInput;
       yawTarget = normalize(yawTarget);
+      yawError = ypr[0] - yawTarget;
+      rudderProcessed = ((-1 * MULTIPLIER * yawError) + rudderProcessed) * rudderIGain;
+      if (abs(yawError) > 20) {
+        rudderIGain += 0.05;
+      } else {
+        rudderIGain = 1;
+      }
     }
 
     if (flags & ELEVATOR_FLAG) {
