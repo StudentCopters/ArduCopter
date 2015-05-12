@@ -74,6 +74,9 @@ This code reads the time multiple PPM signals are HIGH and passes it through to 
 //interrupt pin for gyro
 #define MPU6050INTERRUPT_PIN 13
 
+//comment for seperate aileron/rudder
+#define COMBINED_RUDDER_AILERON
+
 //shared vars for input and flags
 volatile uint8_t sharedFlags = 0;
 volatile uint16_t sharedThrottle = SIGNAL_NEUTRAL;
@@ -289,6 +292,13 @@ void loop() {
       yawInput = map(rudderIn, 1096, 1900, -1 * MULTIPLIER, MULTIPLIER);
       yawTarget += yawInput;
       yawTarget = normalize(yawTarget);
+      yawError = ypr[0] - yawTarget;
+      rudderProcessed = ((-1 * MULTIPLIER * yawError) + rudderProcessed) * rudderIGain;
+      if (abs(yawError) > 20) {
+        rudderIGain += 0.05;
+      } else {
+        rudderIGain = 1;
+      }
     }
 
     if (flags & ELEVATOR_FLAG) {
@@ -296,11 +306,25 @@ void loop() {
       pitchInput = map(elevatorIn, 1096, 1900, -1 * MULTIPLIER, MULTIPLIER);
       pitchTarget += pitchInput;
       pitchTarget = normalize(pitchTarget);
+      pitchError = ypr[1] - pitchTarget;
+      elevatorProcessed = ((-1 * MULTIPLIER * pitchError) + elevatorProcessed) * elevatorIGain;
+      if (abs(pitchError) > 20) {
+        elevatorIGain += 0.05;
+      } else {
+        elevatorIGain = 1;
+      }
     }
 
     if (flags & AILERON_FLAG) {//unneeded
       rollInput = map(aileronIn, 1096, 1900, -1 * MULTIPLIER, MULTIPLIER);
       rollTarget = 0;
+      rollError = ypr[2] - rollTarget;
+      aileronProcessed = ((-1 * MULTIPLIER * rollError) + aileronProcessed) * aileronIGain;
+      if (abs(rollError) > 20) {
+        aileronIGain += 0.05;
+      } else {
+        aileronIGain = 1;
+      }
     }
 
     if (flags & AUX1_FLAG) {//unneeded
@@ -308,6 +332,11 @@ void loop() {
 
       }
     }
+    
+#ifdef COMBINED_RUDDER_AILERON
+    aileronProcessed = (aileronProcessed + rudderProcessed) / 2;
+#endif
+
   } else {
     throttleIGain = 1;
     rudderIGain = 1;
