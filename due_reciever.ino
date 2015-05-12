@@ -60,7 +60,7 @@ This code reads the time multiple PPM signals are HIGH and passes it through to 
 #define AILERON_OUT_PORT 5
 #define AUX1_OUT_PORT 6
 
-//interrupt flags
+//interrupt flags, bitmask
 #define THROTTLE_FLAG 1
 #define RUDDER_FLAG 2
 #define ELEVATOR_FLAG 4
@@ -69,10 +69,13 @@ This code reads the time multiple PPM signals are HIGH and passes it through to 
 #define AUX2_FLAG 32
 
 //base multiplier for active correction
-#define MULTIPLIER 50
+#define MULTIPLIER 5
 
 //interrupt pin for gyro
 #define MPU6050INTERRUPT_PIN 13
+
+//comment for seperate aileron/rudder
+#define COMBINED_RUDDER_AILERON
 
 //shared vars for input and flags
 volatile uint8_t sharedFlags = 0;
@@ -90,6 +93,21 @@ volatile uint32_t elevatorStart;
 volatile uint32_t aileronStart;
 volatile uint32_t aux1Start;
 volatile uint32_t aux2Start;
+
+//target ypr
+int16_t yawTarget;
+int16_t pitchTarget;
+int16_t rollTarget;
+
+//error ypr
+int16_t yawError = 0;
+int16_t pitchError = 0;
+int16_t rollError = 0;
+
+//ypr input
+int16_t yawInput = 0;
+int16_t pitchInput = 0;
+int16_t rollInput = 0;
 
 //the outputs
 Servo throttle, rudder, elevator, aileron, aux1;
@@ -175,7 +193,7 @@ void setup() {
     mpu.setDMPEnabled(true);
 
     // enable Arduino interrupt detection
-    Serial.println(F("Enabling interrupt detection (Arduino external interrupt 8)..."));
+    Serial.println(F("Enabling interrupt detection (Arduino external interrupt 13)..."));
     attachInterrupt(MPU6050INTERRUPT_PIN, dmpDataReady, RISING);
     mpuIntStatus = mpu.getIntStatus();
 
@@ -195,7 +213,11 @@ void setup() {
     Serial.println(F(")"));
   }
 
-
+  if (!dmpReady) return;
+  getAccel();
+  yawTarget = ypr[0];
+  pitchTarget = ypr[1];
+  rollTarget = ypr[2];
 }
 
 void loop() {
@@ -257,38 +279,64 @@ void loop() {
     interrupts();
   }
 
+  getAccel();
   //PROCESSING
   if (aux2In < SIGNAL_NEUTRAL - 200) { //if processing...
 
     if (flags & THROTTLE_FLAG) {
-      if (false) {
-
-      }
+      throttleProcessed = SIGNAL_NEUTRAL;
     }
 
     if (flags & RUDDER_FLAG) {
-      if (false) {
-
+      rudderProcessed = SIGNAL_NEUTRAL;
+      yawInput = map(rudderIn, 1096, 1900, -1 * MULTIPLIER, MULTIPLIER);
+      yawTarget += yawInput;
+      yawTarget = normalize(yawTarget);
+      yawError = ypr[0] - yawTarget;
+      rudderProcessed = ((-1 * MULTIPLIER * yawError) + rudderProcessed) * rudderIGain;
+      if (abs(yawError) > 20) {
+        rudderIGain += 0.05;
+      } else {
+        rudderIGain = 1;
       }
     }
 
     if (flags & ELEVATOR_FLAG) {
+      elevatorProcessed = SIGNAL_NEUTRAL;
+      pitchInput = map(elevatorIn, 1096, 1900, -1 * MULTIPLIER, MULTIPLIER);
+      pitchTarget += pitchInput;
+      pitchTarget = normalize(pitchTarget);
+      pitchError = ypr[1] - pitchTarget;
+      elevatorProcessed = ((-1 * MULTIPLIER * pitchError) + elevatorProcessed) * elevatorIGain;
+      if (abs(pitchError) > 20) {
+        elevatorIGain += 0.05;
+      } else {
+        elevatorIGain = 1;
+      }
+    }
+
+    if (flags & AILERON_FLAG) {//unneeded
+      rollInput = map(aileronIn, 1096, 1900, -1 * MULTIPLIER, MULTIPLIER);
+      rollTarget = 0;
+      rollError = ypr[2] - rollTarget;
+      aileronProcessed = ((-1 * MULTIPLIER * rollError) + aileronProcessed) * aileronIGain;
+      if (abs(rollError) > 20) {
+        aileronIGain += 0.05;
+      } else {
+        aileronIGain = 1;
+      }
+    }
+
+    if (flags & AUX1_FLAG) {//unneeded
       if (false) {
 
       }
     }
+    
+#ifdef COMBINED_RUDDER_AILERON
+    aileronProcessed = (aileronProcessed + rudderProcessed) / 2;
+#endif
 
-    if (flags & AILERON_FLAG) {
-      if (false) {
-
-      }
-    }
-
-    if (flags & AUX1_FLAG) {
-      if (false) {
-
-      }
-    }
   } else {
     throttleIGain = 1;
     rudderIGain = 1;
@@ -358,6 +406,79 @@ void loop() {
     }
   }
 
+}
+
+void calcThrottle() {
+  //calculate the length of the HIGH PPM wave
+  if (digitalRead(THROTTLE_IN_PORT) == HIGH) {
+    throttleStart = micros();
+  }
+  else {
+    sharedThrottle = (uint32_t)(micros() - throttleStart);
+    sharedFlags |= THROTTLE_FLAG;
+  }
+}
+
+void calcRudder() {
+  //calculate the length of the HIGH PPM wave
+  if (digitalRead(RUDDER_IN_PORT) == HIGH) {
+    rudderStart = micros();
+  }
+  else {
+    sharedRudder = (uint32_t)(micros() - rudderStart);
+    sharedFlags |= RUDDER_FLAG;
+  }
+}
+
+void calcElevator() {
+  //calculate the length of the HIGH PPM wave
+  if (digitalRead(ELEVATOR_IN_PORT) == HIGH) {
+    elevatorStart = micros();
+  }
+  else {
+    sharedElevator = (uint32_t)(micros() - elevatorStart);
+    sharedFlags |= ELEVATOR_FLAG;
+  }
+}
+
+void calcAileron() {
+  //calculate the length of the HIGH PPM wave
+  if (digitalRead(AILERON_IN_PORT) == HIGH) {
+    aileronStart = micros();
+  }
+  else {
+    sharedAileron = (uint32_t)(micros() - aileronStart);
+    sharedFlags |= AILERON_FLAG;
+  }
+}
+
+void calcAux1() {
+  //calculate the length of the HIGH PPM wave
+  if (digitalRead(AUX1_IN_PORT) == HIGH) {
+    aux1Start = micros();
+  }
+  else {
+    sharedAux1 = (uint32_t)(micros() - aux1Start);
+    sharedFlags |= AUX1_FLAG;
+  }
+}
+
+void calcAux2() {
+  //calculate the length of the HIGH PPM wave
+  if (digitalRead(AUX2_IN_PORT) == HIGH) {
+    aux2Start = micros();
+  }
+  else {
+    sharedAux2 = (uint32_t)(micros() - aux2Start);
+    sharedFlags |= AUX2_FLAG;
+  }
+}
+
+void dmpDataReady() {
+  mpuInterrupt = true;
+}
+
+void getAccel() {
   // wait for MPU interrupt or extra packet(s) available
   while (!mpuInterrupt && fifoCount < packetSize) {
   }
@@ -470,74 +591,18 @@ void loop() {
   }
 }
 
-void calcThrottle() {
-  //calculate the length of the HIGH PPM wave
-  if (digitalRead(THROTTLE_IN_PORT) == HIGH) {
-    throttleStart = micros();
+int16_t normalize(int16_t norm) {
+  if (norm > 360) {
+    while (norm > 360) {
+      norm -= 360;
+    }
+  } else if (norm < 0) {
+    while (norm < 0) {
+      norm += 360;
+    }
   }
-  else {
-    sharedThrottle = (uint32_t)(micros() - throttleStart);
-    sharedFlags |= THROTTLE_FLAG;
-  }
-}
 
-void calcRudder() {
-  //calculate the length of the HIGH PPM wave
-  if (digitalRead(RUDDER_IN_PORT) == HIGH) {
-    rudderStart = micros();
-  }
-  else {
-    sharedRudder = (uint32_t)(micros() - rudderStart);
-    sharedFlags |= RUDDER_FLAG;
-  }
-}
-
-void calcElevator() {
-  //calculate the length of the HIGH PPM wave
-  if (digitalRead(ELEVATOR_IN_PORT) == HIGH) {
-    elevatorStart = micros();
-  }
-  else {
-    sharedElevator = (uint32_t)(micros() - elevatorStart);
-    sharedFlags |= ELEVATOR_FLAG;
-  }
-}
-
-void calcAileron() {
-  //calculate the length of the HIGH PPM wave
-  if (digitalRead(AILERON_IN_PORT) == HIGH) {
-    aileronStart = micros();
-  }
-  else {
-    sharedAileron = (uint32_t)(micros() - aileronStart);
-    sharedFlags |= AILERON_FLAG;
-  }
-}
-
-void calcAux1() {
-  //calculate the length of the HIGH PPM wave
-  if (digitalRead(AUX1_IN_PORT) == HIGH) {
-    aux1Start = micros();
-  }
-  else {
-    sharedAux1 = (uint32_t)(micros() - aux1Start);
-    sharedFlags |= AUX1_FLAG;
-  }
-}
-
-void calcAux2() {
-  //calculate the length of the HIGH PPM wave
-  if (digitalRead(AUX2_IN_PORT) == HIGH) {
-    aux2Start = micros();
-  }
-  else {
-    sharedAux2 = (uint32_t)(micros() - aux2Start);
-    sharedFlags |= AUX2_FLAG;
-  }
-}
-
-void dmpDataReady() {
-  mpuInterrupt = true;
+  return norm;
 }
 
 /*void getMPU6050() {
