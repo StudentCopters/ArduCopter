@@ -75,7 +75,7 @@ This code reads the time multiple PPM signals are HIGH and passes it through to 
 #define MPU6050INTERRUPT_PIN 13
 
 //comment for seperate aileron/rudder
-#define COMBINED_RUDDER_AILERON
+//#define COMBINED_RUDDER_AILERON
 
 //shared vars for input and flags
 volatile uint8_t sharedFlags = 0;
@@ -131,6 +131,9 @@ VectorInt16 aaWorld;    // [x, y, z]            world-frame accel sensor measure
 VectorFloat gravity;    // [x, y, z]            gravity vector
 float euler[3];         // [psi, theta, phi]    Euler angle container
 float ypr[3];           // [yaw, pitch, roll]   yaw/pitch/roll container and gravity vector
+int16_t yaw;
+int16_t pitch;
+int16_t roll;
 
 // packet structure for InvenSense teapot demo
 uint8_t teapotPacket[14] = { '$', 0x02, 0, 0, 0, 0, 0, 0, 0, 0, 0x00, 0x00, '\r', '\n' };
@@ -289,11 +292,16 @@ void loop() {
 
     if (flags & RUDDER_FLAG) {
       rudderProcessed = SIGNAL_NEUTRAL;
-      yawInput = map(rudderIn, 1096, 1900, -1 * MULTIPLIER, MULTIPLIER);
+      if (rudderIn > 1400 && rudderIn < 1500) {
+        yawInput = 0;
+      } else {
+        yawInput = map(rudderIn, 1096, 1896, -1 * MULTIPLIER, MULTIPLIER);
+      }
       yawTarget += yawInput;
       yawTarget = normalize(yawTarget);
-      yawError = ypr[0] - yawTarget;
-      rudderProcessed = ((-1 * MULTIPLIER * yawError) + rudderProcessed) * rudderIGain;
+      yawError = yaw - yawTarget;
+      rudderProcessed = ((1 * MULTIPLIER * yawError) + rudderProcessed) * 1;
+      Serial.print(yawError);
       if (abs(yawError) > 20) {
         rudderIGain += 0.05;
       } else {
@@ -303,11 +311,16 @@ void loop() {
 
     if (flags & ELEVATOR_FLAG) {
       elevatorProcessed = SIGNAL_NEUTRAL;
-      pitchInput = map(elevatorIn, 1096, 1900, -1 * MULTIPLIER, MULTIPLIER);
+      if (elevatorIn > 1400 && elevatorIn < 1500) {
+        pitchInput = 0;
+      } else {
+        pitchInput = map(elevatorIn, 1096, 1896, -1 * MULTIPLIER, MULTIPLIER);
+      }
       pitchTarget += pitchInput;
       pitchTarget = normalize(pitchTarget);
-      pitchError = ypr[1] - pitchTarget;
-      elevatorProcessed = ((-1 * MULTIPLIER * pitchError) + elevatorProcessed) * elevatorIGain;
+      pitchError = pitch - pitchTarget;
+      elevatorProcessed = ((1 * MULTIPLIER * pitchError) + elevatorProcessed) * 1;
+      Serial.print(pitchError);
       if (abs(pitchError) > 20) {
         elevatorIGain += 0.05;
       } else {
@@ -316,10 +329,17 @@ void loop() {
     }
 
     if (flags & AILERON_FLAG) {//unneeded
-      rollInput = map(aileronIn, 1096, 1900, -1 * MULTIPLIER, MULTIPLIER);
-      rollTarget = 0;
-      rollError = ypr[2] - rollTarget;
-      aileronProcessed = ((-1 * MULTIPLIER * rollError) + aileronProcessed) * aileronIGain;
+      aileronProcessed = SIGNAL_NEUTRAL;
+      if (aileronIn > 1400 && aileronIn < 1500) {
+        rollInput = 0;
+      } else {
+        rollInput = map(aileronIn, 1096, 1896, -1 * MULTIPLIER, MULTIPLIER);
+      }
+      rollTarget += rollInput;
+      rollTarget = normalize(rollTarget);
+      rollError = roll - rollTarget;
+      aileronProcessed = ((1 * MULTIPLIER * rollError) + aileronProcessed) * 1;
+      Serial.print(rollError);
       if (abs(rollError) > 20) {
         aileronIGain += 0.05;
       } else {
@@ -332,7 +352,7 @@ void loop() {
 
       }
     }
-    
+
 #ifdef COMBINED_RUDDER_AILERON
     aileronProcessed = (aileronProcessed + rudderProcessed) / 2;
 #endif
@@ -539,10 +559,13 @@ void getAccel() {
     mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);
     Serial.print("ypr\t");
     Serial.print(ypr[0] * 180 / M_PI);
+    yaw = ypr[0] * 180 / M_PI;
     Serial.print("\t");
     Serial.print(ypr[1] * 180 / M_PI);
+    pitch = ypr[1] * 180 / M_PI;
     Serial.print("\t");
     Serial.println(ypr[2] * 180 / M_PI);
+    roll = ypr[2] * 180 / M_PI;
 #endif
 
 #ifdef OUTPUT_READABLE_REALACCEL
@@ -592,12 +615,12 @@ void getAccel() {
 }
 
 int16_t normalize(int16_t norm) {
-  if (norm > 360) {
-    while (norm > 360) {
+  if (norm > 180) {
+    while (norm > 180) {
       norm -= 360;
     }
-  } else if (norm < 0) {
-    while (norm < 0) {
+  } else if (norm < -180) {
+    while (norm < -180) {
       norm += 360;
     }
   }
