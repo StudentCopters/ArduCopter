@@ -292,17 +292,18 @@ void loop() {
 
     if (flags & RUDDER_FLAG) {
       rudderProcessed = SIGNAL_NEUTRAL;
-      if (rudderIn > 1400 && rudderIn < 1500) {
+      if (rudderIn > 1400 && rudderIn < 1500) {//dead zone
         yawInput = 0;
       } else {
-        yawInput = map(rudderIn, 1096, 1896, -1 * MULTIPLIER, MULTIPLIER);
+        yawInput = map(rudderIn, 1096, 1896, -1 * MULTIPLIER, MULTIPLIER);//map inputs to target change
       }
-      yawTarget += yawInput;
-      yawTarget = normalize(yawTarget);
-      yawError = yaw - yawTarget;
-      rudderProcessed = ((1 * MULTIPLIER * yawError) + rudderProcessed) * 1;
+      yawTarget += yawInput;//change target
+      yawTarget = normalize(yawTarget);//normalize it to -180..180
+      yawError = yaw - yawTarget;//get how far off you are
+      yawError = normalize(yawError);//normalize to -180..180
+      rudderProcessed = ((1 * MULTIPLIER * yawError) + rudderProcessed) * 1;//output it
       Serial.print(yawError);
-      if (abs(yawError) > 20) {
+      if (abs(yawError) > 20) {//increase the I gain
         rudderIGain += 0.05;
       } else {
         rudderIGain = 1;
@@ -319,6 +320,7 @@ void loop() {
       pitchTarget += pitchInput;
       pitchTarget = normalize(pitchTarget);
       pitchError = pitch - pitchTarget;
+      pitchError = normalize(pitchError);
       elevatorProcessed = ((1 * MULTIPLIER * pitchError) + elevatorProcessed) * 1;
       Serial.print(pitchError);
       if (abs(pitchError) > 20) {
@@ -338,6 +340,7 @@ void loop() {
       rollTarget += rollInput;
       rollTarget = normalize(rollTarget);
       rollError = roll - rollTarget;
+      rollError = normalize(rollError);
       aileronProcessed = ((1 * MULTIPLIER * rollError) + aileronProcessed) * 1;
       Serial.print(rollError);
       if (abs(rollError) > 20) {
