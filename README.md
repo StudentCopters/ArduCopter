@@ -1,2 +1,2 @@
 # ArduCopter
-A Arduino powered Quadcopter
+An Arduino powered Quadcopter
